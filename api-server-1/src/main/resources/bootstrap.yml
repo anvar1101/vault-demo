@@ -1,0 +1,30 @@
+spring:
+  cloud:
+    vault:
+      authentication: APPROLE
+      enabled: true
+      app-role:
+        role-id: a226f111-fd5f-f3dd-02b0-d47d66aebc65
+        secret-id: 3bd31089-a894-c7d4-878c-71ed423c261f
+        app-role-path: approle
+        role: api-server-1-role
+      scheme: ${VAULT_SCHEME:http}
+      host: ${VAULT_HOST:127.0.0.1}
+      port: 8201
+      fail-fast: true
+      kv:
+        enabled: true
+        backend: secret
+        profile-separator: '/'
+        default-context: application
+        application-name: api-server-1
+      database:
+        enabled: true
+        role: db-1-role
+        backend: database
+      rabbitmq:
+        enabled: true
+        role: api-server-1
+        backend: rabbitmq
+        username-property: spring.rabbitmq.username
+        password-property: spring.rabbitmq.password

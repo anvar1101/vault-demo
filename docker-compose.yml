@@ -1,0 +1,76 @@
+version: '3'
+networks:
+  app_network:
+volumes:
+  app-1_data-volume:
+  app-2_data-volume:
+  vault_data-volume:
+services:
+  rabbimq:
+    image: "rabbitmq:3.8-management-alpine"
+    container_name: rabbimq
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    networks:
+      - app_network
+    labels:
+      NAME: "rabbitmq"
+    environment:
+      RABBITMQ_DEFAULT_USER: "mq_user"
+      RABBITMQ_DEFAULT_PASS: "q"
+      RABBITMQ_DEFAULT_VHOST: "/app-msg-broker"
+  db_app_1:
+    image: postgres:14
+    restart: on-failure
+    container_name: db_app_1
+    ports:
+      - 5433:5432
+    volumes:
+      - app-1_data-volume:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - TZ=Asia/Almaty
+      - POSTGRES_DB=app1_db
+      - POSTGRES_USER=app1_user
+      - POSTGRES_PASSWORD=q
+    networks:
+      - app_network
+  db_app_2:
+    image: postgres:14
+    restart: on-failure
+    container_name: db_app_2
+    ports:
+      - 5434:5432
+    volumes:
+      - app-2_data-volume:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql      
+    environment:
+      - TZ=Asia/Almaty
+      - POSTGRES_DB=app2_db
+      - POSTGRES_USER=app2_user
+      - POSTGRES_PASSWORD=q
+    networks:
+      - app_network
+  vault:
+    build:
+      context: ./vault
+      dockerfile: Dockerfile
+    container_name: vault
+    restart: on-failure
+    ports:
+      - 8201:8201
+    environment:
+      VAULT_ADDR: 'http://0.0.0.0:8201'
+      VAULT_LOCAL_CONFIG: '{"listener": [{"tcp":{"address": "0.0.0.0:8201","tls_disable":"1"}}], "default_lease_ttl": "168h", "max_lease_ttl": "720h"}, "ui": true}'
+      VAULT_DEV_ROOT_TOKEN_ID: '00000000-0000-0000-0000-000000000000'
+      VAULT_TOKEN: '00000000-0000-0000-0000-000000000000'
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault_data-volume:/data
+    healthcheck:
+      retries: 5
+    command: server -dev -dev-root-token-id="00000000-0000-0000-0000-000000000000"
+    networks:
+      - app_network
